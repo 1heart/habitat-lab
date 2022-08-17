@@ -286,7 +286,7 @@ class RNNStateEncoder(nn.Module):
 
         hidden_states = torch.where(
             masks.view(1, -1, 1), hidden_states, hidden_states.new_zeros(())
-        )
+        ).contiguous()
 
         x, hidden_states = self.rnn(
             x.unsqueeze(0), self.unpack_hidden(hidden_states)
