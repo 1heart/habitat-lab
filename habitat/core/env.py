@@ -14,7 +14,7 @@ import numpy as np
 from gym import spaces
 
 from habitat.config import Config
-from habitat.core.dataset import Dataset, Episode, EpisodeIterator
+from habitat.core.dataset import BaseEpisode, Dataset, Episode, EpisodeIterator
 from habitat.core.embodied_task import EmbodiedTask, Metrics
 from habitat.core.simulator import Observations, Simulator
 from habitat.datasets import make_dataset
@@ -337,12 +337,16 @@ class RLEnv(gym.Env):
         :param config: config to construct :ref:`Env`
         :param dataset: dataset to construct :ref:`Env`.
         """
-
+        self._core_env_config = config
         self._env = Env(config, dataset)
         self.observation_space = self._env.observation_space
         self.action_space = self._env.action_space
         self.number_of_episodes = self._env.number_of_episodes
         self.reward_range = self.get_reward_range()
+
+    @property
+    def config(self) -> Config:
+        return self._core_env_config
 
     @property
     def habitat_env(self) -> Env:
@@ -356,9 +360,21 @@ class RLEnv(gym.Env):
     def episodes(self, episodes: List[Episode]) -> None:
         self._env.episodes = episodes
 
-    @property
-    def current_episode(self) -> Episode:
-        return self._env.current_episode
+    def current_episode(self, all_info: bool = False) -> BaseEpisode:
+        """
+        Returns the current episode of the environment.
+        :param all_info: If true, all of the information in the episode
+        will be provided. Otherwise, only episode_id and scene_id will
+        be included
+        :return: The BaseEpisode object for the current episode
+        """
+        if all_info:
+            return self._env.current_episode
+        else:
+            return BaseEpisode(
+                episode_id=self._env.current_episode.episode_id,
+                scene_id=self._env.current_episode.scene_id,
+            )
 
     @profiling_wrapper.RangeContext("RLEnv.reset")
     def reset(self) -> Observations:
