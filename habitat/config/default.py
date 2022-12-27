@@ -42,46 +42,127 @@ _C.ENVIRONMENT.ITERATOR_OPTIONS.STEP_REPETITION_RANGE = 0.2
 # -----------------------------------------------------------------------------
 # TASK
 # -----------------------------------------------------------------------------
+_C.TASK = CN()
+_C.TASK.REWARD_MEASURE = None
+_C.TASK.SUCCESS_MEASURE = None
+_C.TASK.SUCCESS_REWARD = 2.5
+_C.TASK.SLACK_REWARD = -0.01
+_C.TASK.END_ON_SUCCESS = False
 # -----------------------------------------------------------------------------
 # # NAVIGATION TASK
 # -----------------------------------------------------------------------------
-_C.TASK = CN()
 _C.TASK.TYPE = "Nav-v0"
-_C.TASK.SUCCESS_DISTANCE = 0.2
 _C.TASK.SENSORS = []
 _C.TASK.MEASUREMENTS = []
 _C.TASK.GOAL_SENSOR_UUID = "pointgoal"
 _C.TASK.POSSIBLE_ACTIONS = ["STOP", "MOVE_FORWARD", "TURN_LEFT", "TURN_RIGHT"]
 # -----------------------------------------------------------------------------
+# # REARRANGE TASK
+# -----------------------------------------------------------------------------
+_C.TASK.MAX_COLLISIONS = -1.0
+_C.TASK.COUNT_OBJ_COLLISIONS = True
+_C.TASK.COUNT_ROBOT_OBJ_COLLS = False
+_C.TASK.SETTLE_STEPS = 5
+_C.TASK.CONSTRAINT_VIOLATION_ENDS_EPISODE = True
+_C.TASK.FORCE_REGENERATE = (
+    False  # Forced to regenerate the starts even if they are already cached.
+)
+_C.TASK.SHOULD_SAVE_TO_CACHE = True  # Saves the generated starts to a cache if they are not already generated.
+_C.TASK.MUST_LOOK_AT_TARG = True
+_C.TASK.OBJECT_IN_HAND_SAMPLE_PROB = 0.167
+_C.TASK.USING_SUBTASKS = False
+_C.TASK.DEBUG_GOAL_POINT = True
+_C.TASK.RENDER_TARGET = True
+_C.TASK.EE_SAMPLE_FACTOR = 0.2
+_C.TASK.EE_EXCLUDE_REGION = 0.0
+# In radians
+_C.TASK.BASE_ANGLE_NOISE = 0.15
+_C.TASK.BASE_NOISE = 0.05
+_C.TASK.SPAWN_REGION_SCALE = 0.2
+_C.TASK.JOINT_MAX_IMPULSE = -1.0
+_C.TASK.DESIRED_RESTING_POSITION = []
+_C.TASK.USE_MARKER_T = True
+_C.TASK.SUCCESS_STATE = 0.0
+# Measurements for composite tasks.
+_C.TASK.REWARD_MEASUREMENT = ""
+_C.TASK.SUCCESS_MEASUREMENT = ""
+# If true, does not care about navigability or collisions with objects when spawning
+# robot
+_C.TASK.EASY_INIT = False
+_C.TASK.SHOULD_ENFORCE_TARGET_WITHIN_REACH = False
+# -----------------------------------------------------------------------------
+# # COMPOSITE TASK CONFIG
+# -----------------------------------------------------------------------------
+_C.TASK.TASK_SPEC_BASE_PATH = "configs/tasks/rearrange/pddl/"
+_C.TASK.TASK_SPEC = "nav_pick"
+# PDDL domain params
+_C.TASK.PDDL_DOMAIN_DEF = (
+    "configs/tasks/rearrange/pddl/replica_cad_domain.yaml"
+)
+_C.TASK.OBJ_SUCC_THRESH = 0.3
+_C.TASK.ART_SUCC_THRESH = 0.15
+_C.TASK.SINGLE_EVAL_NODE = -1
+_C.TASK.LIMIT_TASK_NODE = -1  # delete
+_C.TASK.LIMIT_TASK_LEN_SCALING = 0.0  # delete
+_C.TASK.DEBUG_SKIP_TO_NODE = -1
+_C.TASK.SKIP_NODES = ["move_obj"]
+_C.TASK.FILTER_NAV_TO_TASKS = []
+# -----------------------------------------------------------------------------
 # # ACTIONS
 # -----------------------------------------------------------------------------
-ACTIONS = CN()
-ACTIONS.STOP = CN()
-ACTIONS.STOP.TYPE = "StopAction"
+_C.TASK.ACTIONS = CN()
+_C.TASK.ACTIONS.STOP = CN()
+_C.TASK.ACTIONS.STOP.TYPE = "StopAction"
+_C.TASK.ACTIONS.EMPTY = CN()
+_C.TASK.ACTIONS.EMPTY.TYPE = "EmptyAction"
 # -----------------------------------------------------------------------------
 # # NAVIGATION ACTIONS
 # -----------------------------------------------------------------------------
-ACTIONS.MOVE_FORWARD = CN()
-ACTIONS.MOVE_FORWARD.TYPE = "MoveForwardAction"
-ACTIONS.TURN_LEFT = CN()
-ACTIONS.TURN_LEFT.TYPE = "TurnLeftAction"
-ACTIONS.TURN_RIGHT = CN()
-ACTIONS.TURN_RIGHT.TYPE = "TurnRightAction"
-ACTIONS.LOOK_UP = CN()
-ACTIONS.LOOK_UP.TYPE = "LookUpAction"
-ACTIONS.LOOK_DOWN = CN()
-ACTIONS.LOOK_DOWN.TYPE = "LookDownAction"
-ACTIONS.TELEPORT = CN()
-ACTIONS.TELEPORT.TYPE = "TeleportAction"
-ACTIONS.VELOCITY_CONTROL = CN()
-ACTIONS.VELOCITY_CONTROL.TYPE = "VelocityAction"
-ACTIONS.VELOCITY_CONTROL.LIN_VEL_RANGE = [0.0, 0.25]  # meters per sec
-ACTIONS.VELOCITY_CONTROL.ANG_VEL_RANGE = [-10.0, 10.0]  # deg per sec
-ACTIONS.VELOCITY_CONTROL.MIN_ABS_LIN_SPEED = 0.025  # meters per sec
-ACTIONS.VELOCITY_CONTROL.MIN_ABS_ANG_SPEED = 1.0  # deg per sec
-ACTIONS.VELOCITY_CONTROL.TIME_STEP = 1.0  # seconds
-
-_C.TASK.ACTIONS = ACTIONS
+_C.TASK.ACTIONS.MOVE_FORWARD = CN()
+_C.TASK.ACTIONS.MOVE_FORWARD.TYPE = "MoveForwardAction"
+_C.TASK.ACTIONS.TURN_LEFT = CN()
+_C.TASK.ACTIONS.TURN_LEFT.TYPE = "TurnLeftAction"
+_C.TASK.ACTIONS.TURN_RIGHT = CN()
+_C.TASK.ACTIONS.TURN_RIGHT.TYPE = "TurnRightAction"
+_C.TASK.ACTIONS.LOOK_UP = CN()
+_C.TASK.ACTIONS.LOOK_UP.TYPE = "LookUpAction"
+_C.TASK.ACTIONS.LOOK_DOWN = CN()
+_C.TASK.ACTIONS.LOOK_DOWN.TYPE = "LookDownAction"
+_C.TASK.ACTIONS.TELEPORT = CN()
+_C.TASK.ACTIONS.TELEPORT.TYPE = "TeleportAction"
+_C.TASK.ACTIONS.VELOCITY_CONTROL = CN()
+_C.TASK.ACTIONS.VELOCITY_CONTROL.TYPE = "VelocityAction"
+_C.TASK.ACTIONS.VELOCITY_CONTROL.LIN_VEL_RANGE = [0.0, 0.25]  # meters per sec
+_C.TASK.ACTIONS.VELOCITY_CONTROL.ANG_VEL_RANGE = [-10.0, 10.0]  # deg per sec
+_C.TASK.ACTIONS.VELOCITY_CONTROL.MIN_ABS_LIN_SPEED = 0.025  # meters per sec
+_C.TASK.ACTIONS.VELOCITY_CONTROL.MIN_ABS_ANG_SPEED = 1.0  # deg per sec
+_C.TASK.ACTIONS.VELOCITY_CONTROL.TIME_STEP = 1.0  # seconds
+# -----------------------------------------------------------------------------
+# # REARRANGE ACTIONS
+# -----------------------------------------------------------------------------
+_C.TASK.ACTIONS.ARM_ACTION = CN()
+_C.TASK.ACTIONS.ARM_ACTION.TYPE = "ArmAction"
+_C.TASK.ACTIONS.ARM_ACTION.ARM_CONTROLLER = "ArmRelPosAction"
+_C.TASK.ACTIONS.ARM_ACTION.GRIP_CONTROLLER = None
+_C.TASK.ACTIONS.ARM_ACTION.ARM_JOINT_DIMENSIONALITY = 7
+_C.TASK.ACTIONS.ARM_ACTION.GRASP_THRESH_DIST = 0.15
+_C.TASK.ACTIONS.ARM_ACTION.DISABLE_GRIP = False
+_C.TASK.ACTIONS.ARM_ACTION.DELTA_POS_LIMIT = 0.0125
+_C.TASK.ACTIONS.ARM_ACTION.EE_CTRL_LIM = 0.015
+_C.TASK.ACTIONS.ARM_ACTION.SHOULD_CLIP = False
+_C.TASK.ACTIONS.ARM_ACTION.RENDER_EE_TARGET = False
+_C.TASK.ACTIONS.ARM_ACTION.ORACLE_GRASP = False
+_C.TASK.ACTIONS.BASE_VELOCITY = CN()
+_C.TASK.ACTIONS.BASE_VELOCITY.TYPE = "BaseVelAction"
+_C.TASK.ACTIONS.BASE_VELOCITY.LIN_SPEED = 12.0
+_C.TASK.ACTIONS.BASE_VELOCITY.ANG_SPEED = 12.0
+_C.TASK.ACTIONS.BASE_VELOCITY.ALLOW_DYN_SLIDE = True
+_C.TASK.ACTIONS.BASE_VELOCITY.END_ON_STOP = False
+_C.TASK.ACTIONS.BASE_VELOCITY.ALLOW_BACK = True
+_C.TASK.ACTIONS.BASE_VELOCITY.MIN_ABS_LIN_SPEED = 1.0
+_C.TASK.ACTIONS.BASE_VELOCITY.MIN_ABS_ANG_SPEED = 1.0
+_C.TASK.ACTIONS.REARRANGE_STOP = CN()
+_C.TASK.ACTIONS.REARRANGE_STOP.TYPE = "RearrangeStopAction"
 # -----------------------------------------------------------------------------
 # # TASK SENSORS
 # -----------------------------------------------------------------------------
@@ -134,6 +215,132 @@ _C.TASK.PROXIMITY_SENSOR = CN()
 _C.TASK.PROXIMITY_SENSOR.TYPE = "ProximitySensor"
 _C.TASK.PROXIMITY_SENSOR.MAX_DETECTION_RADIUS = 2.0
 # -----------------------------------------------------------------------------
+# JOINT SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.JOINT_SENSOR = CN()
+_C.TASK.JOINT_SENSOR.TYPE = "JointSensor"
+_C.TASK.JOINT_SENSOR.DIMENSIONALITY = 7
+# -----------------------------------------------------------------------------
+# END EFFECTOR POSITION SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.END_EFFECTOR_SENSOR = CN()
+_C.TASK.END_EFFECTOR_SENSOR.TYPE = "EEPositionSensor"
+# -----------------------------------------------------------------------------
+# IS HOLDING SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.IS_HOLDING_SENSOR = CN()
+_C.TASK.IS_HOLDING_SENSOR.TYPE = "IsHoldingSensor"
+# -----------------------------------------------------------------------------
+# RELATIVE RESTING POSISITON SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.RELATIVE_RESTING_POS_SENSOR = CN()
+_C.TASK.RELATIVE_RESTING_POS_SENSOR.TYPE = "RelativeRestingPositionSensor"
+# -----------------------------------------------------------------------------
+# JOINT VELOCITY SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.JOINT_VELOCITY_SENSOR = CN()
+_C.TASK.JOINT_VELOCITY_SENSOR.TYPE = "JointVelocitySensor"
+_C.TASK.JOINT_VELOCITY_SENSOR.DIMENSIONALITY = 7
+# -----------------------------------------------------------------------------
+# ORACLE NAVIGATION ACTION SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.ORACLE_NAV_ACTION_SENSOR = CN()
+_C.TASK.ORACLE_NAV_ACTION_SENSOR.TYPE = "OracleNavigationActionSensor"
+# -----------------------------------------------------------------------------
+# RESTING POSITION SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.RESTING_POS_SENSOR = CN()
+_C.TASK.RESTING_POS_SENSOR.TYPE = "RestingPositionSensor"
+# -----------------------------------------------------------------------------
+# ART JOINT SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.ART_JOINT_SENSOR = CN()
+_C.TASK.ART_JOINT_SENSOR.TYPE = "ArtJointSensor"
+# -----------------------------------------------------------------------------
+# NAV GOAL SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.NAV_GOAL_SENSOR = CN()
+_C.TASK.NAV_GOAL_SENSOR.TYPE = "NavGoalSensor"
+# -----------------------------------------------------------------------------
+# ART JOINT NO VELOCITY SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.ART_JOINT_SENSOR_NO_VEL = CN()
+_C.TASK.ART_JOINT_SENSOR_NO_VEL.TYPE = "ArtJointSensorNoVel"
+# -----------------------------------------------------------------------------
+# MARKER RELATIVE POSISITON SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.MARKER_REL_POS_SENSOR = CN()
+_C.TASK.MARKER_REL_POS_SENSOR.TYPE = "MarkerRelPosSensor"
+# -----------------------------------------------------------------------------
+# TARGET START SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.TARGET_START_SENSOR = CN()
+_C.TASK.TARGET_START_SENSOR.TYPE = "TargetStartSensor"
+_C.TASK.TARGET_START_SENSOR.GOAL_FORMAT = "CARTESIAN"
+_C.TASK.TARGET_START_SENSOR.DIMENSIONALITY = 3
+# -----------------------------------------------------------------------------
+# OBJECT SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.OBJECT_SENSOR = CN()
+_C.TASK.OBJECT_SENSOR.TYPE = "TargetCurrentSensor"
+_C.TASK.OBJECT_SENSOR.GOAL_FORMAT = "CARTESIAN"
+_C.TASK.OBJECT_SENSOR.DIMENSIONALITY = 3
+
+# -----------------------------------------------------------------------------
+# GOAL SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.GOAL_SENSOR = CN()
+_C.TASK.GOAL_SENSOR.TYPE = "GoalSensor"
+_C.TASK.GOAL_SENSOR.GOAL_FORMAT = "CARTESIAN"
+_C.TASK.GOAL_SENSOR.DIMENSIONALITY = 3
+# -----------------------------------------------------------------------------
+# TARGET START OR GOAL SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.TARGET_START_POINT_GOAL_SENSOR = CN()
+_C.TASK.TARGET_START_POINT_GOAL_SENSOR.TYPE = (
+    "TargetOrGoalStartPointGoalSensor"
+)
+# -----------------------------------------------------------------------------
+# TARGET START GPS/COMPASS SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.TARGET_START_GPS_COMPASS_SENSOR = CN()
+_C.TASK.TARGET_START_GPS_COMPASS_SENSOR.TYPE = "TargetStartGpsCompassSensor"
+# -----------------------------------------------------------------------------
+# TARGET GOAL GPS/COMPASS SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.TARGET_GOAL_GPS_COMPASS_SENSOR = CN()
+_C.TASK.TARGET_GOAL_GPS_COMPASS_SENSOR.TYPE = "TargetGoalGpsCompassSensor"
+# -----------------------------------------------------------------------------
+# NAV TO SKILL ID SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.NAV_TO_SKILL_SENSOR = CN()
+_C.TASK.NAV_TO_SKILL_SENSOR.TYPE = "NavToSkillSensor"
+_C.TASK.NAV_TO_SKILL_SENSOR.NUM_SKILLS = 8
+# -----------------------------------------------------------------------------
+# ABSOLUTE TARGET START SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.ABS_TARGET_START_SENSOR = CN()
+_C.TASK.ABS_TARGET_START_SENSOR.TYPE = "AbsTargetStartSensor"
+_C.TASK.ABS_TARGET_START_SENSOR.GOAL_FORMAT = "CARTESIAN"
+_C.TASK.ABS_TARGET_START_SENSOR.DIMENSIONALITY = 3
+# -----------------------------------------------------------------------------
+# ABSOLUTE GOAL SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.ABS_GOAL_SENSOR = CN()
+_C.TASK.ABS_GOAL_SENSOR.TYPE = "AbsGoalSensor"
+_C.TASK.ABS_GOAL_SENSOR.GOAL_FORMAT = "CARTESIAN"
+_C.TASK.ABS_GOAL_SENSOR.DIMENSIONALITY = 3
+# -----------------------------------------------------------------------------
+# DISTANCE TO NAVIGATION GOAL SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.DIST_TO_NAV_GOAL = CN()
+_C.TASK.DIST_TO_NAV_GOAL.TYPE = "DistToNavGoalSensor"
+# -----------------------------------------------------------------------------
+# LOCALIZATION SENSOR
+# -----------------------------------------------------------------------------
+_C.TASK.LOCALIZATION_SENSOR = CN()
+_C.TASK.LOCALIZATION_SENSOR.TYPE = "LocalizationSensor"
+# -----------------------------------------------------------------------------
 # SUCCESS MEASUREMENT
 # -----------------------------------------------------------------------------
 _C.TASK.SUCCESS = CN()
@@ -174,6 +381,195 @@ _C.TASK.TOP_DOWN_MAP.DRAW_GOAL_AABBS = True
 _C.TASK.COLLISIONS = CN()
 _C.TASK.COLLISIONS.TYPE = "Collisions"
 # -----------------------------------------------------------------------------
+# GENERAL MEASUREMENT
+# -----------------------------------------------------------------------------
+_C.TASK.ROBOT_FORCE = CN()
+_C.TASK.ROBOT_FORCE.TYPE = "RobotForce"
+_C.TASK.ROBOT_FORCE.MIN_FORCE = 20.0
+
+_C.TASK.FORCE_TERMINATE = CN()
+_C.TASK.FORCE_TERMINATE.TYPE = "ForceTerminate"
+_C.TASK.FORCE_TERMINATE.MAX_ACCUM_FORCE = -1.0
+
+_C.TASK.ROBOT_COLLS = CN()
+_C.TASK.ROBOT_COLLS.TYPE = "RobotCollisions"
+_C.TASK.OBJECT_TO_GOAL_DISTANCE = CN()
+_C.TASK.OBJECT_TO_GOAL_DISTANCE.TYPE = "ObjectToGoalDistance"
+_C.TASK.END_EFFECTOR_TO_OBJECT_DISTANCE = CN()
+_C.TASK.END_EFFECTOR_TO_OBJECT_DISTANCE.TYPE = "EndEffectorToObjectDistance"
+_C.TASK.END_EFFECTOR_TO_REST_DISTANCE = CN()
+_C.TASK.END_EFFECTOR_TO_REST_DISTANCE.TYPE = "EndEffectorToRestDistance"
+
+_C.TASK.ART_OBJ_AT_DESIRED_STATE = CN()
+_C.TASK.ART_OBJ_AT_DESIRED_STATE.TYPE = "ArtObjAtDesiredState"
+_C.TASK.ART_OBJ_AT_DESIRED_STATE.USE_ABSOLUTE_DISTANCE = True
+_C.TASK.ART_OBJ_AT_DESIRED_STATE.SUCCESS_DIST_THRESHOLD = 0.05
+
+_C.TASK.EE_DIST_TO_MARKER = CN()
+_C.TASK.EE_DIST_TO_MARKER.TYPE = "EndEffectorDistToMarker"
+_C.TASK.ART_OBJ_STATE = CN()
+_C.TASK.ART_OBJ_STATE.TYPE = "ArtObjState"
+_C.TASK.ART_OBJ_SUCCESS = CN()
+_C.TASK.ART_OBJ_SUCCESS.TYPE = "ArtObjSuccess"
+_C.TASK.ART_OBJ_SUCCESS.REST_DIST_THRESHOLD = 0.15
+
+_C.TASK.ART_OBJ_REWARD = CN()
+_C.TASK.ART_OBJ_REWARD.TYPE = "ArtObjReward"
+_C.TASK.ART_OBJ_REWARD.DIST_REWARD = 1.0
+_C.TASK.ART_OBJ_REWARD.WRONG_GRASP_END = False
+_C.TASK.ART_OBJ_REWARD.WRONG_GRASP_PEN = 5.0
+_C.TASK.ART_OBJ_REWARD.ART_DIST_REWARD = 10.0
+_C.TASK.ART_OBJ_REWARD.EE_DIST_REWARD = 10.0
+_C.TASK.ART_OBJ_REWARD.MARKER_DIST_REWARD = 0.0
+_C.TASK.ART_OBJ_REWARD.ART_AT_DESIRED_STATE_REWARD = 5.0
+_C.TASK.ART_OBJ_REWARD.GRASP_REWARD = 0.0
+# General Rearrange Reward config
+_C.TASK.ART_OBJ_REWARD.CONSTRAINT_VIOLATE_PEN = 10.0
+_C.TASK.ART_OBJ_REWARD.FORCE_PEN = 0.0
+_C.TASK.ART_OBJ_REWARD.MAX_FORCE_PEN = 1.0
+_C.TASK.ART_OBJ_REWARD.FORCE_END_PEN = 10.0
+# -----------------------------------------------------------------------------
+# NAVIGATION MEASUREMENT
+# -----------------------------------------------------------------------------
+_C.TASK.ROT_DIST_TO_GOAL = CN()
+_C.TASK.ROT_DIST_TO_GOAL.TYPE = "RotDistToGoal"
+_C.TASK.DIST_TO_GOAL = CN()
+_C.TASK.DIST_TO_GOAL.TYPE = "DistToGoal"
+_C.TASK.BAD_CALLED_TERMINATE = CN()
+_C.TASK.BAD_CALLED_TERMINATE.TYPE = "BadCalledTerminate"
+_C.TASK.BAD_CALLED_TERMINATE.BAD_TERM_PEN = 0.0
+_C.TASK.BAD_CALLED_TERMINATE.DECAY_BAD_TERM = False
+_C.TASK.NAV_TO_POS_SUCC = CN()
+_C.TASK.NAV_TO_POS_SUCC.TYPE = "NavToPosSucc"
+_C.TASK.NAV_TO_POS_SUCC.SUCCESS_DISTANCE = 0.2
+# -----------------------------------------------------------------------------
+# REARRANGE NAVIGATION MEASUREMENT
+# -----------------------------------------------------------------------------
+_C.TASK.REARRANGE_NAV_TO_OBJ_REWARD = CN()
+_C.TASK.REARRANGE_NAV_TO_OBJ_REWARD.TYPE = "NavToObjReward"
+# Reward the agent for facing the object?
+_C.TASK.REARRANGE_NAV_TO_OBJ_REWARD.SHOULD_REWARD_TURN = True
+# What distance do we start giving the reward for facing the object?
+_C.TASK.REARRANGE_NAV_TO_OBJ_REWARD.TURN_REWARD_DIST = 0.1
+# Multiplier on the angle distance to the goal.
+_C.TASK.REARRANGE_NAV_TO_OBJ_REWARD.ANGLE_DIST_REWARD = 1.0
+_C.TASK.REARRANGE_NAV_TO_OBJ_REWARD.DIST_REWARD = 10.0
+_C.TASK.REARRANGE_NAV_TO_OBJ_REWARD.CONSTRAINT_VIOLATE_PEN = 10.0
+_C.TASK.REARRANGE_NAV_TO_OBJ_REWARD.FORCE_PEN = 0.0
+_C.TASK.REARRANGE_NAV_TO_OBJ_REWARD.MAX_FORCE_PEN = 1.0
+_C.TASK.REARRANGE_NAV_TO_OBJ_REWARD.FORCE_END_PEN = 10.0
+
+_C.TASK.REARRANGE_NAV_TO_OBJ_SUCCESS = CN()
+_C.TASK.REARRANGE_NAV_TO_OBJ_SUCCESS.TYPE = "NavToObjSuccess"
+_C.TASK.REARRANGE_NAV_TO_OBJ_SUCCESS.MUST_LOOK_AT_TARG = True
+_C.TASK.REARRANGE_NAV_TO_OBJ_SUCCESS.MUST_CALL_STOP = True
+# Distance in radians.
+_C.TASK.REARRANGE_NAV_TO_OBJ_SUCCESS.SUCCESS_ANGLE_DIST = 0.15
+_C.TASK.REARRANGE_NAV_TO_OBJ_SUCCESS.HEURISTIC_STOP = False
+# -----------------------------------------------------------------------------
+# REARRANGE REACH MEASUREMENT
+# -----------------------------------------------------------------------------
+_C.TASK.REARRANGE_REACH_REWARD = CN()
+_C.TASK.REARRANGE_REACH_REWARD.TYPE = "RearrangeReachReward"
+_C.TASK.REARRANGE_REACH_REWARD.SCALE = 1.0
+_C.TASK.REARRANGE_REACH_REWARD.DIFF_REWARD = True
+_C.TASK.REARRANGE_REACH_REWARD.SPARSE_REWARD = False
+
+_C.TASK.REARRANGE_REACH_SUCCESS = CN()
+_C.TASK.REARRANGE_REACH_SUCCESS.TYPE = "RearrangeReachSuccess"
+_C.TASK.REARRANGE_REACH_SUCCESS.SUCC_THRESH = 0.2
+# -----------------------------------------------------------------------------
+# NUM STEPS MEASUREMENT
+# -----------------------------------------------------------------------------
+_C.TASK.NUM_STEPS = CN()
+_C.TASK.NUM_STEPS.TYPE = "NumStepsMeasure"
+# -----------------------------------------------------------------------------
+# DID PICK OBJECT MEASUREMENT
+# -----------------------------------------------------------------------------
+_C.TASK.DID_PICK_OBJECT = CN()
+_C.TASK.DID_PICK_OBJECT.TYPE = "DidPickObjectMeasure"
+# -----------------------------------------------------------------------------
+# DID VIOLATE HOLD CONSTRAINT MEASUREMENT
+# -----------------------------------------------------------------------------
+_C.TASK.DID_VIOLATE_HOLD_CONSTRAINT = CN()
+_C.TASK.DID_VIOLATE_HOLD_CONSTRAINT.TYPE = "DidViolateHoldConstraintMeasure"
+# -----------------------------------------------------------------------------
+# MOVE OBJECTS REWARD
+# -----------------------------------------------------------------------------
+_C.TASK.MOVE_OBJECTS_REWARD = CN()
+_C.TASK.MOVE_OBJECTS_REWARD.TYPE = "MoveObjectsReward"
+_C.TASK.MOVE_OBJECTS_REWARD.PICK_REWARD = 1.0
+_C.TASK.MOVE_OBJECTS_REWARD.SUCCESS_DIST = 0.15
+_C.TASK.MOVE_OBJECTS_REWARD.SINGLE_REARRANGE_REWARD = 1.0
+_C.TASK.MOVE_OBJECTS_REWARD.DIST_REWARD = 1.0
+_C.TASK.MOVE_OBJECTS_REWARD.CONSTRAINT_VIOLATE_PEN = 10.0
+_C.TASK.MOVE_OBJECTS_REWARD.FORCE_PEN = 0.001
+_C.TASK.MOVE_OBJECTS_REWARD.MAX_FORCE_PEN = 1.0
+_C.TASK.MOVE_OBJECTS_REWARD.FORCE_END_PEN = 10.0
+# -----------------------------------------------------------------------------
+# PICK MEASUREMENT
+# -----------------------------------------------------------------------------
+_C.TASK.PICK_REWARD = CN()
+_C.TASK.PICK_REWARD.TYPE = "RearrangePickReward"
+_C.TASK.PICK_REWARD.DIST_REWARD = 20.0
+_C.TASK.PICK_REWARD.SUCC_REWARD = 10.0
+_C.TASK.PICK_REWARD.PICK_REWARD = 20.0
+_C.TASK.PICK_REWARD.CONSTRAINT_VIOLATE_PEN = 10.0
+_C.TASK.PICK_REWARD.DROP_PEN = 5.0
+_C.TASK.PICK_REWARD.WRONG_PICK_PEN = 5.0
+_C.TASK.PICK_REWARD.COLL_PEN = 1.0
+_C.TASK.PICK_REWARD.ROBOT_OBJ_COLL_PEN = 0.0
+_C.TASK.PICK_REWARD.MAX_ACCUM_FORCE = 5000.0
+_C.TASK.PICK_REWARD.FORCE_PEN = 0.001
+_C.TASK.PICK_REWARD.MAX_FORCE_PEN = 1.0
+_C.TASK.PICK_REWARD.FORCE_END_PEN = 10.0
+_C.TASK.PICK_REWARD.USE_DIFF = True
+_C.TASK.PICK_REWARD.DROP_OBJ_SHOULD_END = False
+_C.TASK.PICK_REWARD.WRONG_PICK_SHOULD_END = False
+_C.TASK.PICK_REWARD.COLLISION_PENALTY = 0.0
+_C.TASK.PICK_REWARD.ROBOT_OBJ_COLLISION_PENALTY = 0.0
+_C.TASK.PICK_SUCCESS = CN()
+_C.TASK.PICK_SUCCESS.TYPE = "RearrangePickSuccess"
+_C.TASK.PICK_SUCCESS.EE_RESTING_SUCCESS_THRESHOLD = 0.15
+# -----------------------------------------------------------------------------
+# PLACE MEASUREMENT
+# -----------------------------------------------------------------------------
+_C.TASK.OBJ_AT_GOAL = CN()
+_C.TASK.OBJ_AT_GOAL.TYPE = "ObjAtGoal"
+_C.TASK.OBJ_AT_GOAL.SUCC_THRESH = 0.15
+
+_C.TASK.PLACE_REWARD = CN()
+_C.TASK.PLACE_REWARD.TYPE = "PlaceReward"
+_C.TASK.PLACE_REWARD.DIST_REWARD = 20.0
+_C.TASK.PLACE_REWARD.SUCC_REWARD = 10.0
+_C.TASK.PLACE_REWARD.PLACE_REWARD = 20.0
+_C.TASK.PLACE_REWARD.DROP_PEN = 5.0
+_C.TASK.PLACE_REWARD.USE_DIFF = True
+_C.TASK.PLACE_REWARD.WRONG_DROP_SHOULD_END = False
+_C.TASK.PLACE_REWARD.CONSTRAINT_VIOLATE_PEN = 10.0
+_C.TASK.PLACE_REWARD.FORCE_PEN = 0.001
+_C.TASK.PLACE_REWARD.MAX_FORCE_PEN = 1.0
+_C.TASK.PLACE_REWARD.FORCE_END_PEN = 10.0
+
+_C.TASK.PLACE_SUCCESS = CN()
+_C.TASK.PLACE_SUCCESS.TYPE = "PlaceSuccess"
+_C.TASK.PLACE_SUCCESS.EE_RESTING_SUCCESS_THRESHOLD = 0.15
+# -----------------------------------------------------------------------------
+# COMPOSITE MEASUREMENT
+# -----------------------------------------------------------------------------
+_C.TASK.COMPOSITE_NODE_IDX = CN()
+_C.TASK.COMPOSITE_NODE_IDX.TYPE = "CompositeNodeIdx"
+_C.TASK.COMPOSITE_SUCCESS = CN()
+_C.TASK.COMPOSITE_SUCCESS.TYPE = "CompositeSuccess"
+_C.TASK.COMPOSITE_REWARD = CN()
+_C.TASK.COMPOSITE_REWARD.TYPE = "CompositeReward"
+_C.TASK.COMPOSITE_REWARD.STAGE_COMPLETE_REWARD = 10.0
+_C.TASK.COMPOSITE_REWARD.SUCCESS_REWARD = 10.0
+_C.TASK.DOES_WANT_TERMINATE = CN()
+_C.TASK.DOES_WANT_TERMINATE.TYPE = "DoesWantTerminate"
+_C.TASK.COMPOSITE_BAD_CALLED_TERMINATE = CN()
+_C.TASK.COMPOSITE_BAD_CALLED_TERMINATE.TYPE = "CompositeBadCalledTerminate"
+# -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 # # EQA TASK
 # -----------------------------------------------------------------------------
@@ -206,6 +602,11 @@ _C.TASK.DISTANCE_TO_GOAL = CN()
 _C.TASK.DISTANCE_TO_GOAL.TYPE = "DistanceToGoal"
 _C.TASK.DISTANCE_TO_GOAL.DISTANCE_TO = "POINT"
 # -----------------------------------------------------------------------------
+# # DISTANCE_TO_GOAL_REWARD MEASUREMENT
+# -----------------------------------------------------------------------------
+_C.TASK.DISTANCE_TO_GOAL_REWARD = CN()
+_C.TASK.DISTANCE_TO_GOAL_REWARD.TYPE = "DistanceToGoalReward"
+# -----------------------------------------------------------------------------
 # # ANSWER_ACCURACY MEASUREMENT
 # -----------------------------------------------------------------------------
 _C.TASK.ANSWER_ACCURACY = CN()
@@ -217,13 +618,48 @@ _C.SIMULATOR = CN()
 _C.SIMULATOR.TYPE = "Sim-v0"
 _C.SIMULATOR.ACTION_SPACE_CONFIG = "v0"
 _C.SIMULATOR.FORWARD_STEP_SIZE = 0.25  # in metres
+_C.SIMULATOR.CREATE_RENDERER = False
+_C.SIMULATOR.REQUIRES_TEXTURES = True
+_C.SIMULATOR.LAG_OBSERVATIONS = 0
+_C.SIMULATOR.AUTO_SLEEP = False
+_C.SIMULATOR.STEP_PHYSICS = True
+_C.SIMULATOR.UPDATE_ROBOT = True
+_C.SIMULATOR.CONCUR_RENDER = False
+_C.SIMULATOR.NEEDS_MARKERS = (
+    True  # If markers should be updated at every step.
+)
+_C.SIMULATOR.UPDATE_ROBOT = (
+    True  # If the robot camera positions should be updated at every step.
+)
 _C.SIMULATOR.SCENE = (
     "data/scene_datasets/habitat-test-scenes/van-gogh-room.glb"
 )
+_C.SIMULATOR.SCENE_DATASET = "default"  # the scene dataset to load in the MetaDataMediator. Should contain SIMULATOR.SCENE
+_C.SIMULATOR.ADDITIONAL_OBJECT_PATHS = (
+    []
+)  # a list of directory or config paths to search in addition to the dataset for object configs. Should match the generated episodes for the task.
 _C.SIMULATOR.SEED = _C.SEED
 _C.SIMULATOR.TURN_ANGLE = 10  # angle to rotate left or right in degrees
 _C.SIMULATOR.TILT_ANGLE = 15  # angle to tilt the camera up or down in degrees
 _C.SIMULATOR.DEFAULT_AGENT_ID = 0
+_C.SIMULATOR.DEBUG_RENDER = False
+# If in render mode a visualization of the rearrangement goal position should
+# also be displayed.
+_C.SIMULATOR.DEBUG_RENDER_GOAL = True
+_C.SIMULATOR.ROBOT_JOINT_START_NOISE = 0.0
+# Rearrange Agent Setup
+_C.SIMULATOR.ARM_REST = [0.6, 0.0, 0.9]
+_C.SIMULATOR.CTRL_FREQ = 120.0
+_C.SIMULATOR.AC_FREQ_RATIO = 4
+_C.SIMULATOR.ROBOT_URDF = "data/robots/hab_fetch/robots/hab_fetch.urdf"
+_C.SIMULATOR.ROBOT_TYPE = "FetchRobot"
+_C.SIMULATOR.EE_LINK_NAME = None
+_C.SIMULATOR.LOAD_OBJS = False
+# Rearrange Agent Grasping
+_C.SIMULATOR.HOLD_THRESH = 0.09
+_C.SIMULATOR.GRASP_IMPULSE = 1000.0
+# ROBOT
+_C.SIMULATOR.IK_ARM_URDF = "data/robots/hab_fetch/robots/fetch_onlyarm.urdf"
 # -----------------------------------------------------------------------------
 # SIMULATOR SENSORS
 # -----------------------------------------------------------------------------
@@ -350,12 +786,6 @@ _C.SIMULATOR.FISHEYE_SEMANTIC_SENSOR.TYPE = "HabitatSimFisheyeSemanticSensor"
 _C.SIMULATOR.AGENT_0 = CN()
 _C.SIMULATOR.AGENT_0.HEIGHT = 1.5
 _C.SIMULATOR.AGENT_0.RADIUS = 0.1
-_C.SIMULATOR.AGENT_0.MASS = 32.0
-_C.SIMULATOR.AGENT_0.LINEAR_ACCELERATION = 20.0
-_C.SIMULATOR.AGENT_0.ANGULAR_ACCELERATION = 4 * 3.14
-_C.SIMULATOR.AGENT_0.LINEAR_FRICTION = 0.5
-_C.SIMULATOR.AGENT_0.ANGULAR_FRICTION = 1.0
-_C.SIMULATOR.AGENT_0.COEFFICIENT_OF_RESTITUTION = 0.0
 _C.SIMULATOR.AGENT_0.SENSORS = ["RGB_SENSOR"]
 _C.SIMULATOR.AGENT_0.IS_SET_START_STATE = False
 _C.SIMULATOR.AGENT_0.START_POSITION = [0, 0, 0]
@@ -375,10 +805,13 @@ _C.SIMULATOR.HABITAT_SIM_V0.GPU_DEVICE_ID = 0
 _C.SIMULATOR.HABITAT_SIM_V0.GPU_GPU = False
 # Whether or not the agent slides on collisions
 _C.SIMULATOR.HABITAT_SIM_V0.ALLOW_SLIDING = True
+_C.SIMULATOR.HABITAT_SIM_V0.FRUSTUM_CULLING = True
 _C.SIMULATOR.HABITAT_SIM_V0.ENABLE_PHYSICS = False
 _C.SIMULATOR.HABITAT_SIM_V0.PHYSICS_CONFIG_FILE = (
     "./data/default.physics_config.json"
 )
+# Possibly unstable optimization for extra performance with concurrent rendering
+_C.SIMULATOR.HABITAT_SIM_V0.LEAVE_CONTEXT_WITH_BACKGROUND_RENDERER = False
 # -----------------------------------------------------------------------------
 # PYROBOT
 # -----------------------------------------------------------------------------
@@ -434,6 +867,28 @@ _C.DATASET.DATA_PATH = (
     "data/datasets/pointnav/habitat-test-scenes/v1/{split}/{split}.json.gz"
 )
 
+# -----------------------------------------------------------------------------
+# GYM
+# -----------------------------------------------------------------------------
+_C.GYM = CN()
+_C.GYM.AUTO_NAME = ""
+_C.GYM.OBS_KEYS = None
+_C.GYM.ACTION_KEYS = None
+_C.GYM.ACHIEVED_GOAL_KEYS = []
+_C.GYM.DESIRED_GOAL_KEYS = []
+
+# -----------------------------------------------------------------------------
+# Task
+# -----------------------------------------------------------------------------
+# Uless another RLEnv is implemented and registered, the default task is
+# should be RLTaskEnv. RLTaskEnv works for both Navigation and Rearrange.
+_C.ENV_TASK = "RLTaskEnv"
+
+# -----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# DEPRECATED KEYS
+# -----------------------------------------------------------------------------'
+_C.register_deprecated_key("TASK.SUCCESS_DISTANCE")
 # -----------------------------------------------------------------------------
 
 

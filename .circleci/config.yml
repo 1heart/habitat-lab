@@ -2,21 +2,23 @@ version: 2
 gpu: &gpu
   machine:
     image: ubuntu-1604-cuda-10.1:201909-23
-  resource_class: gpu.small
+  resource_class: gpu.nvidia.medium
   environment:
     FPS_THRESHOLD: 900
 
 jobs:
   python_lint:
     docker:
-      - image: circleci/python:3.6
+      - image: cimg/python:3.7.13
     steps:
       - checkout
       - run:
           name: setup
           command: |
-              sudo pip install black flake8 flake8-builtins flake8-bugbear flake8-comprehensions flake8-return flake8-simplify "isort[pyproject]" numpy --progress-bar off
-              sudo pip install -r requirements.txt --progress-bar off
+              pip install black --progress-bar off
+              pip install "isort[pyproject]" numpy --progress-bar off
+              pip install mypy==0.950 --progress-bar off
+              pip install -r requirements.txt --progress-bar off
       - run:
           name: run black
           command: |
@@ -29,13 +31,13 @@ jobs:
               isort habitat/. habitat_baselines/. examples/. test/. setup.py --diff
               isort habitat/. habitat_baselines/. examples/. test/. setup.py --check-only
       - run:
-          name: run flake8
+          name: run mypy
           command: |
-              flake8 --version
-              flake8 habitat/. habitat_baselines/. examples/. tests/. setup.py
+              mypy --version
+              mypy
   pre-commit:
     docker:
-      - image: circleci/python:3.6
+      - image: cimg/python:3.7.13
     working_directory: ~/repo/
 
     steps:
@@ -52,7 +54,7 @@ jobs:
       - run:
           name: Install Dependencies
           command: |
-            sudo pip install -U pip setuptools pre-commit
+            pip install -U pip setuptools pre-commit
             # Install the hooks now so that they'll be cached
             pre-commit install-hooks
 
@@ -132,9 +134,9 @@ jobs:
                 ~/miniconda.sh -b -p $HOME/miniconda
                 rm ~/miniconda.sh
                 export PATH=$HOME/miniconda/bin:/usr/local/cuda/bin:$PATH
-                conda create -y -n habitat python=3.6
+                conda create -y -n habitat python=3.7
                 . activate habitat
-                conda install -q -y -c conda-forge ninja ccache numpy pytest pytest-mock pytest-cov
+                conda install -q -y -c conda-forge ninja ccache numpy pytest pytest-mock pytest-cov psutil
                 pip install pytest-sugar
               fi
       - run:
@@ -142,20 +144,21 @@ jobs:
           no_output_timeout: 20m
           background: true
           command: |
+              export PATH=$HOME/miniconda/bin:/usr/local/cuda/bin:$PATH
+              . activate habitat;
               if [ ! -f ~/miniconda/pytorch_installed ]
               then
-                export PATH=$HOME/miniconda/bin:/usr/local/cuda/bin:$PATH
-                . activate habitat;
-                conda install -c  conda-forge opencv -y
-                conda install -y pytorch torchvision cudatoolkit=10.0 -c pytorch
+                echo "Installing pytorch"
+                conda install -y pytorch==1.4.0 torchvision cudatoolkit=10.0 -c pytorch
               fi
               touch ~/miniconda/pytorch_installed
+              python -c 'import torch; print("Has cuda ? ",torch.cuda.is_available()); print("torch version : ",torch.__version__);'
       - restore_cache:
           keys:
             - habitat-sim-{{ checksum "./hsim_sha" }}
       - restore_cache:
           keys:
-            - ccache-{{ arch }}-master
+            - ccache-{{ arch }}-main
           paths:
             - /home/circleci/.ccache
       - run:
@@ -167,7 +170,7 @@ jobs:
             ccache --zero-stats
             ccache --max-size=10.0G
       - run:
-          name: Build, install habitat-sim and run benchmark
+          name: Build and install habitat-sim
           no_output_timeout: 30m
           command: |
               if [ ! -d ./habitat-sim ]
@@ -221,7 +224,7 @@ jobs:
           paths:
             - ./habitat-sim
       - save_cache:
-          key: ccache-{{ arch }}-master
+          key: ccache-{{ arch }}-main
           background: true
           paths:
             - /home/circleci/.ccache
@@ -242,15 +245,37 @@ jobs:
             - ~/miniconda
       - run:
           name: Run api tests
+          no_output_timeout: 120m
+          command: |
+              export PATH=$HOME/miniconda/bin:/usr/local/cuda/bin:$PATH
+              . activate habitat; cd habitat-lab
+              python setup.py develop --all
+              export PYTHONPATH=.:$PYTHONPATH
+              python setup.py test --addopts "--cov-report=xml --cov-report term  --cov=./"
+
+              bash <(curl -s https://codecov.io/bash) -f coverage.xml
+      - run:
+          name: Run baseline training tests
           no_output_timeout: 30m
           command: |
               export PATH=$HOME/miniconda/bin:/usr/local/cuda/bin:$PATH
               . activate habitat; cd habitat-lab
               python setup.py develop --all
               export PYTHONPATH=.:$PYTHONPATH
-              python setup.py test --addopts "--cov-report=xml --cov=./"
-
-              bash <(curl -s https://codecov.io/bash) -f coverage.xml
+              # This is a flag that enables test_test_baseline_training to work
+              export TEST_BASELINE_SMALL=1
+              python setup.py test --addopts "test/test_baseline_training.py"
+      - run:
+          name: Run Hab2.0 benchmark
+          no_output_timeout: 30m
+          command: |
+              export PATH=$HOME/miniconda/bin:/usr/local/cuda/bin:$PATH
+              . activate habitat; cd habitat-lab
+              python -m habitat_sim.utils.datasets_download --uids hab2_bench_assets
+              mkdir -p data/ep_datasets/
+              cp data/hab2_bench_assets/bench_scene.json.gz data/ep_datasets/
+              bash scripts/hab2_bench/bench_runner.sh
+              python scripts/hab2_bench/plot_bench.py
       - run:
           name: Build api documentation
           command: |
@@ -266,10 +291,20 @@ jobs:
               curl -s https://aihabitat.org/docs/habitat-sim/objects.inv > ../habitat-sim/build/docs-public/habitat-sim/objects.inv
 
               cd docs
-              conda install -y -c conda-forge doxygen==1.8.16
+              conda install -y -c conda-forge doxygen
               conda install -y  jinja2 pygments docutils
               mkdir -p ../build/docs
               ./build-public.sh
+      - run:
+          name: Ensure non-editable mode works
+          command: |
+              export PATH=$HOME/miniconda/bin:/usr/local/cuda/bin:$PATH
+              . activate habitat; cd habitat-lab
+              python -m pip install .
+              python -c "import habitat"
+
+      - store_artifacts:
+          path: habitat-lab/data/profile  # This is the benchmark profile
 
 
 workflows:

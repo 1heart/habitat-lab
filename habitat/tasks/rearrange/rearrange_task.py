@@ -10,9 +10,14 @@ from typing import Any, Dict, List, Union
 import numpy as np
 
 from habitat.core.dataset import Episode
+from habitat.core.registry import registry
 from habitat.tasks.nav.nav import NavigationTask
 from habitat.tasks.rearrange.rearrange_sim import RearrangeSim
-from habitat.tasks.rearrange.utils import CollisionDetails, rearrange_collision
+from habitat.tasks.rearrange.utils import (
+    CollisionDetails,
+    rearrange_collision,
+    rearrange_logger,
+)
 
 
 def merge_sim_episode_with_object_config(sim_config, episode):
@@ -22,14 +27,17 @@ def merge_sim_episode_with_object_config(sim_config, episode):
     return sim_config
 
 
-DESIRED_FETCH_ARM_RESTING_REL_LOCATION = np.array([0.5, 0.0, 1.0])
+ADD_CACHE_KEY = "add_cache_key"
 
 
+@registry.register_task(name="RearrangeEmptyTask-v0")
 class RearrangeTask(NavigationTask):
     """
     Defines additional logic for valid collisions and gripping shared between
     all rearrangement tasks.
     """
+
+    _cur_episode_step: int
 
     def overwrite_sim_config(self, sim_config, episode):
         return merge_sim_episode_with_object_config(sim_config, episode)
@@ -41,33 +49,70 @@ class RearrangeTask(NavigationTask):
         self.is_gripper_closed = False
         self._sim: RearrangeSim = sim
         self._ignore_collisions: List[Any] = []
-        self._desired_resting = DESIRED_FETCH_ARM_RESTING_REL_LOCATION
+        self._desired_resting = np.array(self._config.DESIRED_RESTING_POSITION)
+        self._sim_reset = True
+        self._targ_idx: int = 0
+        self._episode_id: str = ""
+        self._cur_episode_step = 0
+
+    @property
+    def targ_idx(self):
+        return self._targ_idx
+
+    @property
+    def abs_targ_idx(self):
+        if self._targ_idx is None:
+            return None
+        return self._sim.get_targets()[0][self._targ_idx]
 
     @property
     def desired_resting(self):
         return self._desired_resting
 
-    def reset(self, episode: Episode):
-        super_reset = True
+    def set_args(self, **kwargs):
+        raise NotImplementedError("Task cannot dynamically set arguments")
+
+    def set_sim_reset(self, sim_reset):
+        self._sim_reset = sim_reset
+
+    def reset(self, episode: Episode, fetch_observations: bool = True):
+        self._episode_id = episode.episode_id
         self._ignore_collisions = []
-        if super_reset:
-            observations = super().reset(episode)
-        else:
-            observations = None
+
+        if self._sim_reset:
+            self._sim.reset()
+            for action_instance in self.actions.values():
+                action_instance.reset(episode=episode, task=self)
+            self._is_episode_active = True
+            self._sim.set_robot_base_to_random_point()
+
         self.prev_measures = self.measurements.get_metrics()
-        self.prev_picked = False
-        self.n_succ_picks = 0
+        self._targ_idx = 0
         self.coll_accum = CollisionDetails()
         self.prev_coll_accum = CollisionDetails()
         self.should_end = False
         self._done = False
+        self._cur_episode_step = 0
+        if fetch_observations:
+            return self._get_observations(episode)
+        else:
+            return None
 
-        return observations
+    def _get_observations(self, episode):
+        obs = self._sim.get_sensor_observations()
+        obs = self._sim._sensor_suite.get_observations(obs)
+
+        task_obs = self.sensor_suite.get_observations(
+            observations=obs, episode=episode, task=self
+        )
+        obs.update(task_obs)
+        return obs
 
     def step(self, action: Dict[str, Any], episode: Episode):
         obs = super().step(action=action, episode=episode)
 
         self.prev_coll_accum = copy.copy(self.coll_accum)
+        self._cur_episode_step += 1
 
         return obs
 
@@ -78,13 +123,20 @@ class RearrangeTask(NavigationTask):
         episode: Episode,
         **kwargs: Any,
     ) -> bool:
-
         done = False
         if self.should_end:
             done = True
 
-        if self._sim.grasp_mgr.is_violating_hold_constraint():
+        if (
+            self._sim.grasp_mgr.is_violating_hold_constraint()
+            and self._config.CONSTRAINT_VIOLATION_ENDS_EPISODE
+        ):
             done = True
+
+        if done:
+            rearrange_logger.debug("-" * 10)
+            rearrange_logger.debug("------ Episode Over --------")
+            rearrange_logger.debug("-" * 10)
 
         return not done
 
@@ -132,3 +184,26 @@ class RearrangeTask(NavigationTask):
 
     def get_n_targets(self) -> int:
         return self.n_objs
+
+    @property
+    def should_end(self) -> bool:
+        return self._should_end
+
+    @should_end.setter
+    def should_end(self, new_val: bool):
+        self._should_end = new_val
+        ##
+        # NB: _check_episode_is_active is called after step() but
+        # before metrics are updated. Thus if should_end is set
+        # by a metric, the episode will end on the _next_
+        # step. This makes sure that the episode is ended
+        # on the correct step.
+        self._is_episode_active = (
+            not self._should_end
+        ) and self._is_episode_active
+        if new_val:
+            rearrange_logger.debug("-" * 40)
+            rearrange_logger.debug(
+                f"-----Episode {self._episode_id} requested to end after {self._cur_episode_step} steps.-----"
+            )
+            rearrange_logger.debug("-" * 40)

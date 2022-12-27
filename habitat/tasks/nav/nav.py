@@ -6,10 +6,11 @@
 
 # TODO, lots of typing errors in here
 
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Sequence, Tuple
 
 import attr
 import numpy as np
+import quaternion
 from gym import spaces
 
 from habitat.config import Config
@@ -110,7 +111,9 @@ class NavigationEpisode(Episode):
     """
 
     goals: List[NavigationGoal] = attr.ib(
-        default=None, validator=not_none_validator
+        default=None,
+        validator=not_none_validator,
+        on_setattr=Episode._reset_shortest_path_cache_hook,
     )
     start_room: Optional[str] = None
     shortest_paths: Optional[List[List[ShortestPathPoint]]] = None
@@ -268,7 +271,7 @@ class ImageGoalSensor(Sensor):
         goal_position = np.array(episode.goals[0].position, dtype=np.float32)
         # to be sure that the rotation is the same for the same episode_id
         # since the task is currently using pointnav Dataset.
-        seed = abs(hash(episode.episode_id)) % (2 ** 32)
+        seed = abs(hash(episode.episode_id)) % (2**32)
         rng = np.random.RandomState(seed)
         angle = rng.uniform(0, 2 * np.pi)
         source_rotation = [0, np.sin(angle / 2), 0, np.cos(angle / 2)]
@@ -360,7 +363,7 @@ class HeadingSensor(Sensor):
         return SensorTypes.HEADING
 
     def _get_observation_space(self, *args: Any, **kwargs: Any):
-        return spaces.Box(low=-np.pi, high=np.pi, shape=(1,), dtype=np.float)
+        return spaces.Box(low=-np.pi, high=np.pi, shape=(1,), dtype=np.float32)
 
     def _quat_to_xy_heading(self, quat):
         direction_vector = np.array([0, 0, -1])
@@ -376,7 +379,10 @@ class HeadingSensor(Sensor):
         agent_state = self._sim.get_agent_state()
         rotation_world_agent = agent_state.rotation
 
-        return self._quat_to_xy_heading(rotation_world_agent.inverse())
+        if isinstance(rotation_world_agent, quaternion.quaternion):
+            return self._quat_to_xy_heading(rotation_world_agent.inverse())
+        else:
+            raise ValueError("Agent's rotation was not a quaternion")
 
 
 @registry.register_sensor(name="CompassSensor")
@@ -396,9 +402,12 @@ class EpisodicCompassSensor(HeadingSensor):
         rotation_world_agent = agent_state.rotation
         rotation_world_start = quaternion_from_coeff(episode.start_rotation)
 
-        return self._quat_to_xy_heading(
-            rotation_world_agent.inverse() * rotation_world_start
-        )
+        if isinstance(rotation_world_agent, quaternion.quaternion):
+            return self._quat_to_xy_heading(
+                rotation_world_agent.inverse() * rotation_world_start
+            )
+        else:
+            raise ValueError("Agent's rotation was not a quaternion")
 
 
 @registry.register_sensor(name="GPSSensor")
@@ -562,10 +571,12 @@ class SPL(Measure):
     def __init__(
         self, sim: Simulator, config: Config, *args: Any, **kwargs: Any
     ):
-        self._previous_position = None
-        self._start_end_episode_distance = None
+        self._previous_position: Optional[np.ndarray] = None
+        self._start_end_episode_distance: Optional[float] = None
         self._agent_episode_distance: Optional[float] = None
-        self._episode_view_points = None
+        self._episode_view_points: Optional[
+            List[Tuple[float, float, float]]
+        ] = None
         self._sim = sim
         self._config = config
 
@@ -729,7 +740,7 @@ class TopDownMap(Measure):
         t_x, t_y = maps.to_grid(
             position[2],
             position[0],
-            self._top_down_map.shape[0:2],
+            (self._top_down_map.shape[0], self._top_down_map.shape[1]),
             sim=self._sim,
         )
         self._top_down_map[
@@ -796,7 +807,10 @@ class TopDownMap(Measure):
                         maps.to_grid(
                             p[2],
                             p[0],
-                            self._top_down_map.shape[0:2],
+                            (
+                                self._top_down_map.shape[0],
+                                self._top_down_map.shape[1],
+                            ),
                             sim=self._sim,
                         )
                         for p in corners
@@ -822,7 +836,10 @@ class TopDownMap(Measure):
             )
             self._shortest_path_points = [
                 maps.to_grid(
-                    p[2], p[0], self._top_down_map.shape[0:2], sim=self._sim
+                    p[2],
+                    p[0],
+                    (self._top_down_map.shape[0], self._top_down_map.shape[1]),
+                    sim=self._sim,
                 )
                 for p in _shortest_path_points
             ]
@@ -848,19 +865,19 @@ class TopDownMap(Measure):
         a_x, a_y = maps.to_grid(
             agent_position[2],
             agent_position[0],
-            self._top_down_map.shape[0:2],
+            (self._top_down_map.shape[0], self._top_down_map.shape[1]),
             sim=self._sim,
         )
         self._previous_xy_location = (a_y, a_x)
 
         self.update_fog_of_war_mask(np.array([a_x, a_y]))
 
-        # draw source and target parts last to avoid overlap
-        self._draw_goals_view_points(episode)
-        self._draw_goals_aabb(episode)
-        self._draw_goals_positions(episode)
-
-        self._draw_shortest_path(episode, agent_position)
+        if hasattr(episode, "goal"):
+            # draw source and target parts last to avoid overlap
+            self._draw_goals_view_points(episode)
+            self._draw_goals_aabb(episode)
+            self._draw_goals_positions(episode)
+            self._draw_shortest_path(episode, agent_position)
 
         if self._config.DRAW_SOURCE:
             self._draw_point(
@@ -897,7 +914,7 @@ class TopDownMap(Measure):
         a_x, a_y = maps.to_grid(
             agent_position[2],
             agent_position[0],
-            self._top_down_map.shape[0:2],
+            (self._top_down_map.shape[0], self._top_down_map.shape[1]),
             sim=self._sim,
         )
         # Don't draw over the source point
@@ -990,8 +1007,52 @@ class DistanceToGoal(Measure):
                     f"Non valid DISTANCE_TO parameter was provided: {self._config.DISTANCE_TO}"
                 )
 
-            self._previous_position = current_position
+            self._previous_position = (
+                current_position[0],
+                current_position[1],
+                current_position[2],
+            )
             self._metric = distance_to_target
+
+
+@registry.register_measure
+class DistanceToGoalReward(Measure):
+    """
+    The measure calculates a reward based on the distance towards the goal.
+    The reward is `- (new_distance - previous_distance)` i.e. the
+    decrease of distance to the goal.
+    """
+
+    cls_uuid: str = "distance_to_goal_reward"
+
+    def __init__(
+        self, sim: Simulator, config: Config, *args: Any, **kwargs: Any
+    ):
+        self._sim = sim
+        self._config = config
+        self._previous_distance: Optional[float] = None
+        super().__init__()
+
+    def _get_uuid(self, *args: Any, **kwargs: Any) -> str:
+        return self.cls_uuid
+
+    def reset_metric(self, episode, task, *args: Any, **kwargs: Any):
+        task.measurements.check_measure_dependencies(
+            self.uuid, [DistanceToGoal.cls_uuid]
+        )
+        self._previous_distance = task.measurements.measures[
+            DistanceToGoal.cls_uuid
+        ].get_metric()
+        self.update_metric(episode=episode, task=task, *args, **kwargs)  # type: ignore
+
+    def update_metric(
+        self, episode, task: EmbodiedTask, *args: Any, **kwargs: Any
+    ):
+        distance_to_target = task.measurements.measures[
+            DistanceToGoal.cls_uuid
+        ].get_metric()
+        self._metric = -(distance_to_target - self._previous_distance)
+        self._previous_distance = distance_to_target
 
 
 @registry.register_task_action
@@ -1070,7 +1131,7 @@ class TeleportAction(SimulatorTaskAction):
         self,
         *args: Any,
         position: List[float],
-        rotation: List[float],
+        rotation: Sequence[float],
         **kwargs: Any,
     ):
         r"""Update ``_metric``, this method is called from ``Env`` on each
@@ -1199,7 +1260,7 @@ class VelocityAction(SimulatorTaskAction):
         )
         agent_state = self._sim.get_agent_state()
 
-        # Convert from np.quaternion to mn.Quaternion
+        # Convert from np.quaternion (quaternion.quaternion) to mn.Quaternion
         normalized_quaternion = agent_state.rotation
         agent_mn_quat = mn.Quaternion(
             normalized_quaternion.imag, normalized_quaternion.real

@@ -11,7 +11,7 @@ Junjie Hu and Mete Ozay and Yan Zhang and Takayuki Okatani
 WACV 2019
 
 ResNet code gently borrowed from
-https://github.com/pytorch/vision/blob/master/torchvision/models/py
+https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py
 """
 
 
@@ -556,8 +556,8 @@ class ToTensor:
             img = torch.from_numpy(pic.transpose((2, 0, 1)))
             return img.float().div(255)
 
-        if accimage is not None and isinstance(pic, accimage.Image):
-            nppic = np.zeros(
+        if accimage is not None and isinstance(pic, accimage.Image):  # type: ignore
+            nppic = np.zeros(  # type: ignore[unreachable]
                 [pic.channels, pic.height, pic.width], dtype=np.float32
             )
             pic.copyto(nppic)
@@ -570,7 +570,7 @@ class ToTensor:
             img = torch.from_numpy(np.array(pic, np.int16, copy=False))
         else:
             img = torch.ByteTensor(
-                torch.ByteStorage.from_buffer(pic.tobytes())
+                torch.ByteStorage.from_buffer(pic.tobytes())  # type: ignore
             )
         # PIL image mode: 1, L, P, I, F, RGB, YCbCr, RGBA, CMYK
         if pic.mode == "YCbCr":

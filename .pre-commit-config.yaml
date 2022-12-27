@@ -5,7 +5,7 @@ default_language_version:
 
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v4.2.0
     hooks:
     -   id: trailing-whitespace
     -   id: check-added-large-files
@@ -23,22 +23,28 @@ repos:
         args: ['--fix=lf']
 
 -   repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-    rev: v2.1.0
+    rev: v2.3.0
     hooks:
     -   id: pretty-format-ini
         args: [--autofix]
     -   id: pretty-format-toml
         args: [--autofix]
 
+-   repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.9.0  # Use the ref you want to point at
+    hooks:
+    -   id: python-check-blanket-noqa
+    # TODO: Add blanket type ignore check as well
+
 -   repo: https://github.com/timothycrosley/isort
-    rev: 5.8.0
+    rev: 5.10.1
     hooks:
     -   id: isort
-        exclude: docs/
+        exclude: docs/|examples/tutorials/(colabs|nb_python)/(.*\.py|.*\.ipynb)$
         additional_dependencies: [toml]
 
 -   repo: https://github.com/ambv/black
-    rev: 21.6b0
+    rev: 22.3.0
     hooks:
     - id: black
       exclude: ^examples/tutorials/(nb_python|colabs)
@@ -51,33 +57,34 @@ repos:
         exclude: docs/
 
 -   repo: https://gitlab.com/pycqa/flake8
-    rev: 3.9.2
+    rev: 4.0.1
     hooks:
     -   id: flake8
         exclude: docs/
         additional_dependencies:
-        - flake8-bugbear==21.4.3
+        - flake8-bugbear==22.4.25
         - flake8-builtins==1.5.3
-        - flake8-comprehensions==3.4.0
-        - flake8-return==1.1.2
-        - flake8-simplify==0.14.1
+        - flake8-comprehensions==3.8.0
+        - flake8-return==1.1.3
+        - flake8-simplify==0.18.2
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v0.902
+    rev: v0.950
     hooks:
     -   id: mypy
         pass_filenames: false
         additional_dependencies:
-        - attrs
+         - attrs>=19.1.0
+         - numpy
 
 -   repo: https://github.com/kynan/nbstripout
-    rev: 0.4.0
+    rev: 0.5.0
     hooks:
     -   id: nbstripout
         files: ".ipynb"
 
 -   repo: https://github.com/mwouts/jupytext
-    rev: v1.11.3
+    rev: v1.13.8
     hooks:
     -   id: jupytext
         files: '^examples/tutorials/(colabs|nb_python)/(.*\.py|.*\.ipynb)$'
@@ -88,12 +95,12 @@ repos:
             - isort
 
 -   repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.7.2.1
+    rev: v0.8.0.4
     hooks:
     -   id: shellcheck
         exclude: ^habitat_baselines/slambased/
 
 -   repo: https://github.com/AleksaC/circleci-cli-py
-    rev: v0.1.15338
+    rev: v0.1.17183
     hooks:
     -   id: circle-ci-validator

@@ -50,11 +50,6 @@ def run_main_subproc(args):
 @pytest.mark.parametrize(
     "args",
     [
-        (
-            "examples/tutorials/nb_python/Habitat_Interactive_Tasks.py",
-            "--no-show-video",
-            "--no-make-video",
-        ),
         ("examples/tutorials/nb_python/Habitat_Lab.py",),
     ],
 )
@@ -69,7 +64,26 @@ def test_example_modules(args):
             "examples/interactive_play.py",
             "--no-render",
         ),
+        ("examples/tutorials/nb_python/Habitat2_Quickstart.py",),
+        ("examples/tutorials/nb_python/habitat2_gym_tutorial.py",),
     ],
 )
 def test_rearrange_example_modules(args):
+    run_main_subproc(args)
+
+
+@pytest.mark.skipif(
+    not osp.exists("configs/tasks/franka_point.yaml"),
+    reason="Requires the franka point config",
+)
+@pytest.mark.parametrize(
+    "args",
+    [
+        (
+            "examples/franka_example.py",
+            "--no-render",
+        ),
+    ],
+)
+def test_static_franka_example(args):
     run_main_subproc(args)

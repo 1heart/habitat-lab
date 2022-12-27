@@ -74,7 +74,8 @@ class ResizeShortestEdge(ObservationTransformer):
         self,
         size: int,
         channels_last: bool = True,
-        trans_keys: Tuple[str] = ("rgb", "depth", "semantic"),
+        trans_keys: Tuple[str, ...] = ("rgb", "depth", "semantic"),
+        semantic_key: str = "semantic",
     ):
         """Args:
         size: The size you want to resize the shortest edge to
@@ -83,7 +84,8 @@ class ResizeShortestEdge(ObservationTransformer):
         super(ResizeShortestEdge, self).__init__()
         self._size: int = size
         self.channels_last: bool = channels_last
-        self.trans_keys: Tuple[str] = trans_keys
+        self.trans_keys: Tuple[str, ...] = trans_keys
+        self.semantic_key = semantic_key
 
     def transform_observation_space(
         self,
@@ -113,9 +115,14 @@ class ResizeShortestEdge(ObservationTransformer):
                     )
         return observation_space
 
-    def _transform_obs(self, obs: torch.Tensor) -> torch.Tensor:
+    def _transform_obs(
+        self, obs: torch.Tensor, interpolation_mode: str
+    ) -> torch.Tensor:
         return image_resize_shortest_edge(
-            obs, self._size, channels_last=self.channels_last
+            obs,
+            self._size,
+            channels_last=self.channels_last,
+            interpolation_mode=interpolation_mode,
         )
 
     @torch.no_grad()
@@ -123,13 +130,14 @@ class ResizeShortestEdge(ObservationTransformer):
         self, observations: Dict[str, torch.Tensor]
     ) -> Dict[str, torch.Tensor]:
         if self._size is not None:
-            observations.update(
-                {
-                    sensor: self._transform_obs(observations[sensor])
-                    for sensor in self.trans_keys
-                    if sensor in observations
-                }
-            )
+            for sensor in self.trans_keys:
+                if sensor in observations:
+                    interpolation_mode = "area"
+                    if self.semantic_key in sensor:
+                        interpolation_mode = "nearest"
+                    observations[sensor] = self._transform_obs(
+                        observations[sensor], interpolation_mode
+                    )
         return observations
 
     @classmethod
@@ -143,9 +151,9 @@ class CenterCropper(ObservationTransformer):
 
     def __init__(
         self,
-        size: Union[int, Tuple[int, int]],
+        size: Union[numbers.Integral, Tuple[int, int]],
         channels_last: bool = True,
-        trans_keys: Tuple[str] = ("rgb", "depth", "semantic"),
+        trans_keys: Tuple[str, ...] = ("rgb", "depth", "semantic"),
     ):
         """Args:
         size: A sequence (h, w) or int of the size you wish to resize/center_crop.
@@ -154,7 +162,7 @@ class CenterCropper(ObservationTransformer):
         trans_keys: The list of sensors it will try to centercrop.
         """
         super().__init__()
-        if isinstance(size, numbers.Number):
+        if isinstance(size, numbers.Integral):
             size = (int(size), int(size))
         assert len(size) == 2, "forced input size must be len of 2 (h, w)"
         self._size = size
@@ -309,7 +317,7 @@ class CameraProjection(metaclass=abc.ABCMeta):
             # Rotate points according to camera rotation
             _h, _w, _ = pts.shape
             # points in world coord = R @ points in camera coord
-            rotated_pts = torch.matmul(pts.view((-1, 3)), self.R.T)
+            rotated_pts = torch.matmul(pts.view((-1, 3)), self.R.T)  # type: ignore
             return rotated_pts.view(_h, _w, 3)
 
     def worldcoord2camcoord(self, pts: torch.Tensor):
@@ -636,7 +644,7 @@ class ProjectionConverter(nn.Module):
         # grids shape: (output_len, input_len, output_img_h, output_img_w, 2)
         self.grids = self.generate_grid()
         # _grids_cache shape: (batch_size*output_len*input_len, output_img_h, output_img_w, 2)
-        self._grids_cache = None
+        self._grids_cache: Optional[torch.Tensor] = None
 
     def _generate_grid_one_output(
         self, output_model: CameraProjection
@@ -821,7 +829,7 @@ def get_cubemap_projections(
         torch.tensor([[1, 0, 0], [0, 0, -1], [0, 1, 0]]),  # Up
     ]
 
-    projections = []
+    projections: List[CameraProjection] = []
     for rot in rotations:
         cam = PerspectiveProjection(img_h, img_w, R=rot)
         projections.append(cam)
@@ -885,9 +893,8 @@ class ProjectionTransformer(ObservationTransformer):
         self.channels_last: bool = channels_last
         self.converter = converter
         if target_uuids is None:
-            self.target_uuids: List[str] = self.sensor_uuids[::6]
-        else:
-            self.target_uuids: List[str] = target_uuids
+            target_uuids = self.sensor_uuids[::6]
+        self.target_uuids: List[str] = target_uuids
         self.depth_key = depth_key
 
     def transform_observation_space(
@@ -896,6 +903,7 @@ class ProjectionTransformer(ObservationTransformer):
     ):
         r"""Transforms the target UUID's sensor obs_space so it matches the new shape (H, W)"""
         # Transforms the observation space to of the target UUID
+        observation_space = copy.deepcopy(observation_space)
         for i, key in enumerate(self.target_uuids):
             assert (
                 key in observation_space.spaces
@@ -933,7 +941,7 @@ class ProjectionTransformer(ObservationTransformer):
             target_obs = observations[target_sensor_uuid]
             sensor_dtype = target_obs.dtype
             # Stacking along axis makes the flattening go in the right order.
-            imgs = torch.stack(sensor_obs, axis=1)
+            imgs = torch.stack(sensor_obs, dim=1)
             imgs = torch.flatten(imgs, end_dim=1)
             if not self.channels_last:
                 imgs = imgs.permute((0, 3, 1, 2))  # NHWC => NCHW
@@ -1062,7 +1070,7 @@ class CubeMap2Fisheye(ProjectionTransformer):
         sensor_uuids: List[str],
         fish_shape: Tuple[int, int],
         fish_fov: float,
-        fish_params: Tuple[float],
+        fish_params: Tuple[float, float, float],
         channels_last: bool = False,
         target_uuids: Optional[List[str]] = None,
         depth_key: str = "depth",

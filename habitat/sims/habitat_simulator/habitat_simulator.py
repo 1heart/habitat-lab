@@ -20,7 +20,6 @@ from typing import (
 import numpy as np
 from gym import spaces
 from gym.spaces.box import Box
-from numpy import ndarray
 
 if TYPE_CHECKING:
     from torch import Tensor
@@ -114,7 +113,7 @@ class HabitatSimRGBSensor(RGBSensor, HabitatSimSensor):
         )
 
     def get_observation(
-        self, sim_obs: Dict[str, Union[ndarray, bool, "Tensor"]]
+        self, sim_obs: Dict[str, Union[np.ndarray, bool, "Tensor"]]
     ) -> VisualObservation:
         obs = cast(Optional[VisualObservation], sim_obs.get(self.uuid, None))
         check_sim_obs(obs, self)
@@ -156,7 +155,7 @@ class HabitatSimDepthSensor(DepthSensor, HabitatSimSensor):
         )
 
     def get_observation(
-        self, sim_obs: Dict[str, Union[ndarray, bool, "Tensor"]]
+        self, sim_obs: Dict[str, Union[np.ndarray, bool, "Tensor"]]
     ) -> VisualObservation:
         obs = cast(Optional[VisualObservation], sim_obs.get(self.uuid, None))
         check_sim_obs(obs, self)
@@ -167,7 +166,7 @@ class HabitatSimDepthSensor(DepthSensor, HabitatSimSensor):
                 obs, axis=2
             )  # make depth observation a 3D array
         else:
-            obs = obs.clamp(self.config.MIN_DEPTH, self.config.MAX_DEPTH)  # type: ignore[attr-defined]
+            obs = obs.clamp(self.config.MIN_DEPTH, self.config.MAX_DEPTH)  # type: ignore[attr-defined, unreachable]
 
             obs = obs.unsqueeze(-1)  # type: ignore[attr-defined]
 
@@ -192,15 +191,20 @@ class HabitatSimSemanticSensor(SemanticSensor, HabitatSimSensor):
         return spaces.Box(
             low=np.iinfo(np.uint32).min,
             high=np.iinfo(np.uint32).max,
-            shape=(self.config.HEIGHT, self.config.WIDTH),
-            dtype=np.uint32,
+            shape=(self.config.HEIGHT, self.config.WIDTH, 1),
+            dtype=np.int32,
         )
 
     def get_observation(
-        self, sim_obs: Dict[str, Union[ndarray, bool, "Tensor"]]
+        self, sim_obs: Dict[str, Union[np.ndarray, bool, "Tensor"]]
     ) -> VisualObservation:
         obs = cast(Optional[VisualObservation], sim_obs.get(self.uuid, None))
         check_sim_obs(obs, self)
+        # make semantic observation a 3D array
+        if isinstance(obs, np.ndarray):
+            obs = obs[..., None].astype(np.int32)
+        else:
+            obs = obs[..., None]
         return obs
 
 
@@ -235,7 +239,9 @@ class HabitatSimFisheyeSemanticSensor(HabitatSimSemanticSensor):
     _get_default_spec = habitat_sim.FisheyeSensorDoubleSphereSpec
 
 
-def check_sim_obs(obs: Optional[ndarray], sensor: Sensor) -> None:
+def check_sim_obs(
+    obs: Union[np.ndarray, "Tensor", None], sensor: Sensor
+) -> None:
     assert obs is not None, (
         "Observation corresponding to {} not present in "
         "simulator's observations".format(sensor.uuid)
@@ -270,6 +276,11 @@ class HabitatSim(habitat_sim.Simulator, Simulator):
         self.sim_config = self.create_sim_config(self._sensor_suite)
         self._current_scene = self.sim_config.sim_cfg.scene_id
         super().__init__(self.sim_config)
+        # load additional object paths specified by the dataset
+        # TODO: Should this be moved elsewhere?
+        obj_attr_mgr = self.get_object_template_manager()
+        for path in self.habitat_config.ADDITIONAL_OBJECT_PATHS:
+            obj_attr_mgr.load_configs(path)
         self._action_space = spaces.Discrete(
             len(self.sim_config.agents[0].action_space)
         )
@@ -289,6 +300,9 @@ class HabitatSim(habitat_sim.Simulator, Simulator):
             config_to=sim_config,
             # Ignore key as it gets propogated to sensor below
             ignore_keys={"gpu_gpu"},
+        )
+        sim_config.scene_dataset_config_file = (
+            self.habitat_config.SCENE_DATASET
         )
         sim_config.scene_id = self.habitat_config.SCENE
         agent_config = habitat_sim.AgentConfiguration()
@@ -376,7 +390,7 @@ class HabitatSim(habitat_sim.Simulator, Simulator):
         self._prev_sim_obs = sim_obs
         return self._sensor_suite.get_observations(sim_obs)
 
-    def step(self, action: Union[str, int]) -> Observations:
+    def step(self, action: Union[str, np.ndarray, int]) -> Observations:
         sim_obs = super().step(action)
         self._prev_sim_obs = sim_obs
         observations = self._sensor_suite.get_observations(sim_obs)
@@ -403,22 +417,27 @@ class HabitatSim(habitat_sim.Simulator, Simulator):
 
         return output
 
-    def reconfigure(self, habitat_config: Config) -> None:
+    def reconfigure(
+        self, habitat_config: Config, should_close_on_new_scene: bool = True
+    ) -> None:
         # TODO(maksymets): Switch to Habitat-Sim more efficient caching
         is_same_scene = habitat_config.SCENE == self._current_scene
         self.habitat_config = habitat_config
         self.sim_config = self.create_sim_config(self._sensor_suite)
         if not is_same_scene:
             self._current_scene = habitat_config.SCENE
-            self.close()
+            if should_close_on_new_scene:
+                self.close(destroy=False)
             super().reconfigure(self.sim_config)
 
         self._update_agents_state()
 
     def geodesic_distance(
         self,
-        position_a: Union[Sequence[float], ndarray],
-        position_b: Union[Sequence[float], Sequence[Sequence[float]]],
+        position_a: Union[Sequence[float], np.ndarray],
+        position_b: Union[
+            Sequence[float], Sequence[Sequence[float]], np.ndarray
+        ],
         episode: Optional[Episode] = None,
     ) -> float:
         if episode is None or episode._shortest_path_cache is None:
@@ -594,7 +613,7 @@ class HabitatSim(habitat_sim.Simulator, Simulator):
             return None
 
     def distance_to_closest_obstacle(
-        self, position: ndarray, max_search_radius: float = 2.0
+        self, position: np.ndarray, max_search_radius: float = 2.0
     ) -> float:
         return self.pathfinder.distance_to_closest_obstacle(
             position, max_search_radius

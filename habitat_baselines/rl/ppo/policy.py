@@ -4,6 +4,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 import abc
+from typing import Dict, Optional, Union
 
 import torch
 from gym import spaces
@@ -23,11 +24,47 @@ from habitat_baselines.rl.models.simple_cnn import SimpleCNN
 from habitat_baselines.utils.common import CategoricalNet, GaussianNet
 
 
-class Policy(nn.Module, metaclass=abc.ABCMeta):
+class Policy(abc.ABC):
+    action_distribution: nn.Module
+
+    def __init__(self):
+        pass
+
+    @property
+    def should_load_agent_state(self):
+        return True
+
+    @property
+    def num_recurrent_layers(self) -> int:
+        return 0
+
+    def forward(self, *x):
+        raise NotImplementedError
+
+    def act(
+        self,
+        observations,
+        rnn_hidden_states,
+        prev_actions,
+        masks,
+        deterministic=False,
+    ):
+        raise NotImplementedError
+
+    @classmethod
+    @abc.abstractmethod
+    def from_config(cls, config, observation_space, action_space):
+        pass
+
+
+class NetPolicy(nn.Module, Policy):
+    action_distribution: nn.Module
+
     def __init__(self, net, dim_actions, policy_config=None):
         super().__init__()
         self.net = net
         self.dim_actions = dim_actions
+        self.action_distribution: Union[CategoricalNet, GaussianNet]
 
         if policy_config is None:
             self.action_distribution_type = "categorical"
@@ -53,6 +90,14 @@ class Policy(nn.Module, metaclass=abc.ABCMeta):
             )
 
         self.critic = CriticHead(self.net.output_size)
+
+    @property
+    def should_load_agent_state(self):
+        return True
+
+    @property
+    def num_recurrent_layers(self) -> int:
+        return self.net.num_recurrent_layers
 
     def forward(self, *x):
         raise NotImplementedError
@@ -90,10 +135,20 @@ class Policy(nn.Module, metaclass=abc.ABCMeta):
         return self.critic(features)
 
     def evaluate_actions(
-        self, observations, rnn_hidden_states, prev_actions, masks, action
+        self,
+        observations,
+        rnn_hidden_states,
+        prev_actions,
+        masks,
+        action,
+        rnn_build_seq_info: Dict[str, torch.Tensor],
     ):
         features, rnn_hidden_states = self.net(
-            observations, rnn_hidden_states, prev_actions, masks
+            observations,
+            rnn_hidden_states,
+            prev_actions,
+            masks,
+            rnn_build_seq_info,
         )
         distribution = self.action_distribution(features)
         value = self.critic(features)
@@ -102,6 +157,19 @@ class Policy(nn.Module, metaclass=abc.ABCMeta):
         distribution_entropy = distribution.entropy()
 
         return value, action_log_probs, distribution_entropy, rnn_hidden_states
+
+    @property
+    def policy_components(self):
+        return (self.net, self.critic, self.action_distribution)
+
+    def policy_parameters(self):
+        for c in self.policy_components:
+            yield from c.parameters()
+
+    def all_policy_tensors(self):
+        yield from self.policy_parameters()
+        for c in self.policy_components:
+            yield from c.buffers()
 
     @classmethod
     @abc.abstractmethod
@@ -121,7 +189,7 @@ class CriticHead(nn.Module):
 
 
 @baseline_registry.register_policy
-class PointNavBaselinePolicy(Policy):
+class PointNavBaselinePolicy(NetPolicy):
     def __init__(
         self,
         observation_space: spaces.Dict,
@@ -225,12 +293,18 @@ class PointNavBaselineNet(Net):
     def num_recurrent_layers(self):
         return self.state_encoder.num_recurrent_layers
 
-    def forward(self, observations, rnn_hidden_states, prev_actions, masks):
+    def forward(
+        self,
+        observations,
+        rnn_hidden_states,
+        prev_actions,
+        masks,
+        rnn_build_seq_info: Optional[Dict[str, torch.Tensor]] = None,
+    ):
         if IntegratedPointGoalGPSAndCompassSensor.cls_uuid in observations:
             target_encoding = observations[
                 IntegratedPointGoalGPSAndCompassSensor.cls_uuid
             ]
-
         elif PointGoalSensor.cls_uuid in observations:
             target_encoding = observations[PointGoalSensor.cls_uuid]
         elif ImageGoalSensor.cls_uuid in observations:
@@ -245,7 +319,7 @@ class PointNavBaselineNet(Net):
 
         x_out = torch.cat(x, dim=1)
         x_out, rnn_hidden_states = self.state_encoder(
-            x_out, rnn_hidden_states, masks
+            x_out, rnn_hidden_states, masks, rnn_build_seq_info
         )
 
         return x_out, rnn_hidden_states
