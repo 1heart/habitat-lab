@@ -63,6 +63,12 @@ class Episode:
     )
     info: Optional[Dict[str, Any]] = None
     _shortest_path_cache: Any = attr.ib(init=False, default=None)
+    scene_dataset_config: str = attr.ib(
+        default="default", validator=not_none_validator
+    )
+    additional_obj_config_paths: List[str] = attr.ib(
+        default=[], validator=not_none_validator
+    )
 
     def __getstate__(self):
         return {
