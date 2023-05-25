@@ -4,11 +4,12 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
+import os
 import random
 from typing import List, Type, Union
 
 import habitat
-from habitat import Config, Env, RLEnv, VectorEnv, make_dataset
+from habitat import Config, Env, RLEnv, ThreadedVectorEnv, VectorEnv, make_dataset
 
 
 def make_env_fn(
@@ -99,7 +100,15 @@ def construct_envs(
         proc_config.freeze()
         configs.append(proc_config)
 
-    envs = habitat.VectorEnv(
+    if int(os.environ.get("HABITAT_ENV_DEBUG", 0)):
+        print(
+            "Using the debug Vector environment interface. Expect slower performance."
+        )
+        vector_env_cls = ThreadedVectorEnv
+    else:
+        vector_env_cls = VectorEnv
+
+    envs = vector_env_cls(
         make_env_fn=make_env_fn,
         env_fn_args=tuple(zip(configs, env_classes)),
         workers_ignore_signals=workers_ignore_signals,

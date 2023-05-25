@@ -101,7 +101,7 @@ class DecentralizedDistributedMixin:
                         model,
                         find_unused_parameters=find_unused_params,
                     )
-
+        print("Device used: {} | actor critic {}".format(self.device, self.actor_critic))
         self._evaluate_actions_wrapper = Guard(_EvalActionsWrapper(self.actor_critic), self.device)  # type: ignore
 
     def _evaluate_actions(

@@ -240,6 +240,10 @@ def init_distrib_slurm(
     :returns: Tuple of the local_rank (aka which GPU to use for this process)
         and the TCPStore used for the rendezvous
     """
+    # print all environment variables
+    if rank0_only():
+        for k, v in os.environ.items():
+            logger.info(f"{k}: {v}")
     assert (
         torch.distributed.is_available()
     ), "torch.distributed must be available"
@@ -251,19 +255,25 @@ def init_distrib_slurm(
         os.environ["NCCL_SOCKET_IFNAME"] = get_ifname()
 
     local_rank, world_rank, world_size = get_distrib_size()
+    logger.info(f"local_rank: {local_rank}, world_rank: {world_rank}, world_size: {world_size}")
 
     master_port = int(os.environ.get("MASTER_PORT", DEFAULT_PORT))
+    logger.info(f"master_port: {master_port}")
+
     if SLURM_JOBID is not None:
         master_port += int(SLURM_JOBID) % int(
             os.environ.get("MASTER_PORT_RANGE", DEFAULT_PORT_RANGE)
         )
+        logger.info(f"master_port: {master_port}")
     master_addr = os.environ.get("MASTER_ADDR", DEFAULT_MASTER_ADDR)
+    logger.info(f"master_addr: {master_addr}")
 
     tcp_store = distrib.TCPStore(  # type: ignore
         master_addr, master_port, world_size, world_rank == 0
     )
+    logger.info(f"tcp_store: {tcp_store}")
     distrib.init_process_group(
         backend, store=tcp_store, rank=world_rank, world_size=world_size
     )
-
+    logger.info(f"distrib: {distrib.get_backend()}")
     return local_rank, tcp_store
