@@ -660,17 +660,21 @@ class SoftSPL(SPL):
 
 @registry.register_measure
 class Collisions(Measure):
+
+    cls_uuid: str = "collisions"
+
     def __init__(self, sim, config, *args: Any, **kwargs: Any):
         self._sim = sim
         self._config = config
-        self._metric = None
+        self._metric = {"count": 0, "is_collision": False}
         super().__init__()
 
     def _get_uuid(self, *args: Any, **kwargs: Any) -> str:
-        return "collisions"
+        return self.cls_uuid
 
     def reset_metric(self, episode, *args: Any, **kwargs: Any):
         self._metric = None
+        self.update_metric(episode, action=None)
 
     def update_metric(self, episode, action, *args: Any, **kwargs: Any):
         if self._metric is None:
@@ -981,6 +985,12 @@ class DistanceToGoal(Measure):
                     [goal.position for goal in episode.goals],
                     episode,
                 )
+                if distance_to_target != distance_to_target:
+                    logger.error(
+                        "Distance to target is NaN. Full episode information {}".format(
+                            episode
+                        )
+                    )
             elif self._config.DISTANCE_TO == "VIEW_POINTS":
                 distance_to_target = self._sim.geodesic_distance(
                     current_position, self._episode_view_points, episode
