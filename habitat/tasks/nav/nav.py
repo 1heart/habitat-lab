@@ -686,6 +686,27 @@ class Collisions(Measure):
 
 
 @registry.register_measure
+class NumSteps(Measure):
+
+    cls_uuid: str = "num_steps"
+
+    def __init__(self, sim, config, *args: Any, **kwargs: Any):
+        self._sim = sim
+        self._config = config
+        self._metric = 0
+        super().__init__()
+
+    def _get_uuid(self, *args: Any, **kwargs: Any) -> str:
+        return self.cls_uuid
+
+    def reset_metric(self, episode, *args: Any, **kwargs: Any):
+        self._metric = 0
+
+    def update_metric(self, episode, *args: Any, **kwargs: Any):
+        self._metric += 1
+
+
+@registry.register_measure
 class TopDownMap(Measure):
     r"""Top Down Map measure"""
 
