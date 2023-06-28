@@ -17,7 +17,7 @@ import magnum as mn
 import numpy as np
 import quaternion
 
-import habitat_sim
+#import habitat_sim
 from habitat_sim.nav import NavMeshSettings
 from habitat_sim.physics import MotionType
 

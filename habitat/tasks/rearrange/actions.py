@@ -8,11 +8,11 @@ import magnum as mn
 import numpy as np
 from gym import spaces
 
-import habitat_sim
+#import habitat_sim
 from habitat.core.embodied_task import SimulatorTaskAction
 from habitat.core.registry import registry
 from habitat.sims.habitat_simulator.actions import HabitatSimActions
-from habitat.tasks.rearrange.rearrange_sim import RearrangeSim
+#from habitat.tasks.rearrange.rearrange_sim import RearrangeSim
 from habitat.tasks.rearrange.utils import rearrange_collision
 
 

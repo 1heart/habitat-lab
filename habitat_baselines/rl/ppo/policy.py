@@ -71,6 +71,7 @@ class Policy(nn.Module, metaclass=abc.ABCMeta):
         distribution = self.action_distribution(features)
         value = self.critic(features)
 
+        print(distribution.probs)
         if deterministic:
             if self.action_distribution_type == "categorical":
                 action = distribution.mode()

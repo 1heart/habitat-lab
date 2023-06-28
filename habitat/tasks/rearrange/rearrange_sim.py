@@ -30,7 +30,7 @@ from habitat.tasks.rearrange.utils import (
 )
 from habitat_sim.gfx import LightInfo, LightPositionModel
 from habitat_sim.physics import MotionType
-from habitat_sim.robots import FetchRobot
+#from habitat_sim.robots import FetchRobot
 
 
 # temp workflow for loading lights into Habitat scene
