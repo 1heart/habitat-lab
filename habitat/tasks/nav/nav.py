@@ -80,6 +80,7 @@ class NavigationGoal:
     r"""Base class for a goal specification hierarchy."""
 
     position: List[float] = attr.ib(default=None, validator=not_none_validator)
+    rotation: Optional[List[float]] = None
     radius: Optional[float] = None
 
 
